@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Modelos • Textos 3D</title>
+  <style>
+    :root { --max: 1120px; --radius: 16px; }
+    body { font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; margin:0; background:#0b0d12; color:#e9eefc; }
+    header { padding:22px 16px; border-bottom:1px solid rgba(255,255,255,.08); background:rgba(0,0,0,.25); position:sticky; top:0; backdrop-filter: blur(10px); z-index:5;}
+    .wrap { max-width:var(--max); margin:0 auto; }
+    h1 { margin:0 0 6px; font-size:18px; letter-spacing:.2px; }
+    p { margin:0; opacity:.86; font-size:13.5px; line-height:1.45; }
+    .bar { display:flex; gap:10px; margin-top:12px; flex-wrap:wrap; }
+    input { flex:1; min-width:220px; padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.06); color:#e9eefc; outline:none;}
+    button { padding:10px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.08); color:#e9eefc; cursor:pointer; }
+    main { padding:18px 16px 44px; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:14px; }
+    .card { border:1px solid rgba(255,255,255,.10); background:rgba(255,255,255,.06); border-radius:var(--radius); overflow:hidden; box-shadow:0 10px 30px rgba(0,0,0,.25); display:flex; flex-direction:column; }
+    .thumb { aspect-ratio:16/10; background:rgba(0,0,0,.25); display:flex; align-items:center; justify-content:center; }
+    .thumb img { width:100%; height:100%; object-fit:cover; cursor:zoom-in; }
+    .meta { padding:10px 12px; display:flex; align-items:center; justify-content:space-between; gap:10px; }
+    .tag { font-size:13px; opacity:.95; }
+    .small { font-size:12px; opacity:.75; }
+    .actions { display:flex; gap:8px; }
+    .lb { position:fixed; inset:0; display:none; background:rgba(0,0,0,.78); align-items:center; justify-content:center; padding:18px; z-index:10;}
+    .lb.open { display:flex; }
+    .lb img { max-width:min(var(--max),96vw); max-height:88vh; border-radius:16px; border:1px solid rgba(255,255,255,.14); cursor:zoom-out; }
+    .cap { margin-top:10px; text-align:center; opacity:.9; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <h1>📌 Modelos de Texto 3D</h1>
+      <p>Escolha o modelo e envie o número na mensagem. Ex.: <b>“Quero o modelo 03”</b>.</p>
+      <div class="bar">
+        <input id="q" placeholder="Pesquisar por tag (ex.: neon, dourado, fogo...)" />
+        <button id="clear">Limpar</button>
+      </div>
+      <p class="small" id="count" style="margin-top:10px;"></p>
+    </div>
+  </header>
+
+  <main>
+    <div class="wrap">
+      <div class="grid" id="grid"></div>
+    </div>
+  </main>
+
+  <div class="lb" id="lb" aria-hidden="true">
+    <div>
+      <img id="lbImg" alt="Visualização do modelo" />
+      <div class="cap" id="lbCap"></div>
+      <div class="cap small">Clique para fechar • ESC</div>
+    </div>
+  </div>
+
+  <script src="./modelos.js"></script>
+
+  <script>
+    const raw = (window.MODELOS || []);
+
+    // Remove duplicados (preserva ordem)
+    const seen = new Set();
+    const MODELOS_UNICOS = raw.filter(m => {
+      const key = (m.src || "").split("?")[0];
+      if (!key) return false;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    const grid = document.getElementById("grid");
+    const q = document.getElementById("q");
+    const count = document.getElementById("count");
+    const clearBtn = document.getElementById("clear");
+
+    const lb = document.getElementById("lb");
+    const lbImg = document.getElementById("lbImg");
+    const lbCap = document.getElementById("lbCap");
+
+    function render(list) {
+      grid.innerHTML = "";
+      list.forEach(m => {
+        const card = document.createElement("div");
+        card.className = "card";
+
+        const thumb = document.createElement("div");
+        thumb.className = "thumb";
+
+        const img = document.createElement("img");
+        img.src = m.src;
+        img.alt = `Modelo ${m.id}`;
+        img.loading = "lazy";
+        img.addEventListener("click", () => openLightbox(m));
+        thumb.appendChild(img);
+
+        const meta = document.createElement("div");
+        meta.className = "meta";
+
+        const tag = document.createElement("div");
+        tag.className = "tag";
+        tag.innerHTML = `<b>Modelo ${m.id}</b><div class="small">${(m.tags || []).join(" • ")}</div>`;
+
+        const actions = document.createElement("div");
+        actions.className = "actions";
+
+        const copyBtn = document.createElement("button");
+        copyBtn.textContent = "Copiar";
+        copyBtn.addEventListener("click", async () => {
+          const text = `Quero o modelo ${m.id}`;
+          try {
+            await navigator.clipboard.writeText(text);
+            copyBtn.textContent = "Copiado!";
+            setTimeout(() => copyBtn.textContent = "Copiar", 900);
+          } catch {
+            alert(text);
+          }
+        });
+
+        actions.appendChild(copyBtn);
+
+        meta.appendChild(tag);
+        meta.appendChild(actions);
+
+        card.appendChild(thumb);
+        card.appendChild(meta);
+        grid.appendChild(card);
+      });
+
+      count.textContent = `${list.length} modelo(s) • duplicados removidos automaticamente`;
+    }
+
+    function openLightbox(m) {
+      lbImg.src = m.src;
+      lbCap.textContent = `Modelo ${m.id}`;
+      lb.classList.add("open");
+      lb.setAttribute("aria-hidden", "false");
+    }
+    function closeLightbox() {
+      lb.classList.remove("
