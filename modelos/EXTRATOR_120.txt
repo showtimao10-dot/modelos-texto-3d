@@ -1,0 +1,61 @@
+EXTRATOR (primeiras 120 imagens JPG/PNG em sequência, sem duplicados)
+
+1) Abra:
+   https://beta.designi.com.br/busca?t=efeitos+de+texto
+
+2) Role a página até carregar PELO MENOS 120 itens (scroll infinito).
+
+3) F12 → Console → cole o script abaixo e aperte ENTER.
+
+--- SCRIPT ---
+(() => {
+  const MAX = 120;
+  const isMedia = (u) => /\.(png|jpg|jpeg|webp)$/i.test(u.split("?")[0]);
+
+  const pull = () => {
+    const imgUrls = [...document.querySelectorAll("img")]
+      .map(i => i.currentSrc || i.src)
+      .filter(Boolean);
+
+    const bgUrls = [...document.querySelectorAll("*")]
+      .map(el => getComputedStyle(el).backgroundImage)
+      .filter(v => v && v !== "none")
+      .flatMap(v => {
+        const matches = [...v.matchAll(/url\((?:'|")?(.*?)(?:'|")?\)/g)];
+        return matches.map(m => m[1]).filter(Boolean);
+      });
+
+    return [...imgUrls, ...bgUrls]
+      .map(u => u.trim())
+      .filter(Boolean)
+      .filter(isMedia)
+      .map(u => u.split("?")[0]); // remove querystring
+  };
+
+  const all = pull();
+
+  // Dedup preservando ordem
+  const seen = new Set();
+  const uniqInOrder = [];
+  for (const u of all) {
+    if (!seen.has(u)) {
+      seen.add(u);
+      uniqInOrder.push(u);
+      if (uniqInOrder.length >= MAX) break;
+    }
+  }
+
+  if (uniqInOrder.length < MAX) {
+    console.warn(`Atenção: só encontrei ${uniqInOrder.length} imagens únicas. Role mais a página e rode de novo.`);
+  }
+
+  const data = uniqInOrder.slice(0, MAX).map((src, i) => ({
+    id: String(i + 1).padStart(3, "0"), // 001..120
+    src,
+    tags: []
+  }));
+
+  console.log("Capturado (únicos, em ordem):", uniqInOrder.length);
+  copy(JSON.stringify(data, null, 2));
+})();
+--- FIM ---
